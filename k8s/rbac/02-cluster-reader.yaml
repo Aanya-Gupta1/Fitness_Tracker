@@ -1,0 +1,32 @@
+# ClusterRole + ClusterRoleBinding: cluster-wide READ-ONLY access to cluster-scoped
+# resources (nodes, namespaces, storage) - e.g. kubectl get nodes, kubectl top nodes.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: fitness-cluster-reader
+rules:
+  - apiGroups: [""]
+    resources: ["nodes", "namespaces", "persistentvolumes"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["storage.k8s.io"]
+    resources: ["storageclasses"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["metrics.k8s.io"]
+    resources: ["nodes", "pods"]
+    verbs: ["get", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: fitness-cluster-reader-binding
+subjects:
+  - kind: ServiceAccount
+    name: fitness-dev
+    namespace: fitness-tracker
+  - kind: ServiceAccount
+    name: fitness-viewer
+    namespace: fitness-tracker
+roleRef:
+  kind: ClusterRole
+  name: fitness-cluster-reader
+  apiGroup: rbac.authorization.k8s.io

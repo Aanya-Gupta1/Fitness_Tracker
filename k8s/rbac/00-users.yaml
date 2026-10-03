@@ -1,0 +1,40 @@
+# Users for the cluster, created purely in YAML as ServiceAccounts with long-lived tokens.
+#   fitness-dev    -> developer (Role + RoleBinding, ClusterRole + ClusterRoleBinding)
+#   fitness-viewer -> read-only (RoleBinding to built-in "view" ClusterRole, ClusterRoleBinding)
+#
+# Get a user's token after applying:
+#   kubectl get secret fitness-dev-token -n fitness-tracker -o jsonpath='{.data.token}' | base64 -d
+# Use it in a kubeconfig:
+#   kubectl config set-credentials fitness-dev --token=<token>
+#   kubectl config set-context fitness-dev --cluster=<your-aks-cluster> --user=fitness-dev --namespace=fitness-tracker
+#   kubectl config use-context fitness-dev
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: fitness-dev
+  namespace: fitness-tracker
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: fitness-dev-token
+  namespace: fitness-tracker
+  annotations:
+    kubernetes.io/service-account.name: fitness-dev
+type: kubernetes.io/service-account-token
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: fitness-viewer
+  namespace: fitness-tracker
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: fitness-viewer-token
+  namespace: fitness-tracker
+  annotations:
+    kubernetes.io/service-account.name: fitness-viewer
+type: kubernetes.io/service-account-token

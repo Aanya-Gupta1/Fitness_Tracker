@@ -1,0 +1,81 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: fitness-tracker-app
+  namespace: fitness-tracker
+  labels:
+    app: fitness-tracker-app
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: fitness-tracker-app
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0   # new pod must be Ready before an old one is removed
+  template:
+    metadata:
+      labels:
+        app: fitness-tracker-app
+      annotations:
+        ad.datadoghq.com/fitness-tracker-app.logs: >-
+          [{"source":"nodejs","service":"fitness-tracker-app"}]
+    spec:
+      containers:
+        - name: fitness-tracker-app
+          image: pulkit197/fitness_tracker-master-copy3-fitness-app:latest
+          imagePullPolicy: Always
+          ports:
+            - name: http
+              containerPort: 5000
+          # Non-sensitive settings from the ConfigMap
+          envFrom:
+            - configMapRef:
+                name: fitness-tracker-config
+          env:
+            # Credentials from the Secret
+            - name: MONGO_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: mongodb-secret
+                  key: MONGO_INITDB_ROOT_USERNAME
+            - name: MONGO_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: mongodb-secret
+                  key: MONGO_INITDB_ROOT_PASSWORD
+            # Connection string built from ConfigMap + Secret values
+            - name: MONGODB_URI
+              value: "mongodb://$(MONGO_USERNAME):$(MONGO_PASSWORD)@$(MONGODB_HOST):$(MONGODB_PORT)/$(MONGODB_DATABASE)?authSource=admin"
+            # Datadog agent (DaemonSet) runs on the node
+            - name: DD_AGENT_HOST
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.hostIP
+          # Startup: allow up to 60s for the app to boot before liveness starts
+          startupProbe:
+            httpGet:
+              path: /
+              port: http
+            periodSeconds: 2
+            failureThreshold: 30
+          # Liveness: restart the container if the web server stops responding
+          livenessProbe:
+            httpGet:
+              path: /
+              port: http
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+          # Readiness: this API route queries MongoDB, so it only succeeds when the
+          # database is reachable (returns 200 with an empty list for this dummy email)
+          readinessProbe:
+            httpGet:
+              path: /api/auth/workouts/readiness-probe
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3

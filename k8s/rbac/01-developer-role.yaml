@@ -1,0 +1,43 @@
+# Role + RoleBinding: namespace-scoped permissions for the developer user "fitness-dev".
+# Can deploy, scale, restart and debug the app inside the fitness-tracker namespace only.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: fitness-developer
+  namespace: fitness-tracker
+rules:
+  # Workloads: view, create, update, scale and roll out
+  - apiGroups: ["apps"]
+    resources: ["deployments", "statefulsets", "replicasets"]
+    verbs: ["get", "list", "watch", "create", "update", "patch"]
+  - apiGroups: ["apps"]
+    resources: ["deployments/scale", "statefulsets/scale"]
+    verbs: ["get", "update", "patch"]
+  # Pods: view, read logs, delete (to force a restart)
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list", "watch", "delete"]
+  - apiGroups: [""]
+    resources: ["pods/log"]
+    verbs: ["get", "list"]
+  # Services and ConfigMaps (Secrets deliberately excluded)
+  - apiGroups: [""]
+    resources: ["services", "configmaps"]
+    verbs: ["get", "list", "watch", "create", "update", "patch"]
+  - apiGroups: [""]
+    resources: ["endpoints", "persistentvolumeclaims", "events"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: fitness-developer-binding
+  namespace: fitness-tracker
+subjects:
+  - kind: ServiceAccount
+    name: fitness-dev
+    namespace: fitness-tracker
+roleRef:
+  kind: Role
+  name: fitness-developer
+  apiGroup: rbac.authorization.k8s.io

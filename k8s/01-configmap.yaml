@@ -1,0 +1,26 @@
+# Non-sensitive application configuration, injected into the app pods with envFrom.
+# Credentials live in the Secret (02-secret.yaml).
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: fitness-tracker-config
+  namespace: fitness-tracker
+  labels:
+    app: fitness-tracker-app
+data:
+  # Application settings
+  NODE_ENV: "production"
+  PORT: "5000"
+  HOST: "0.0.0.0"
+
+  # MongoDB connection pieces (combined with the Secret into MONGODB_URI in the Deployment)
+  MONGODB_HOST: "mongodb-service"
+  MONGODB_PORT: "27017"
+  MONGODB_DATABASE: "fitness-tracker"
+
+  # Datadog APM settings
+  DD_ENV: "production"
+  DD_SERVICE: "fitness-tracker-app"
+  DD_VERSION: "1.0.0"
+  DD_TRACE_AGENT_PORT: "8126"
+  DD_LOGS_INJECTION: "true"

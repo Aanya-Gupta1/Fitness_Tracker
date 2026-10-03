@@ -1,0 +1,17 @@
+# Exposes the app through an Azure Load Balancer with a public IP (port 80 -> 5000).
+# Get the address with: kubectl get svc fitness-tracker-service -n fitness-tracker
+apiVersion: v1
+kind: Service
+metadata:
+  name: fitness-tracker-service
+  namespace: fitness-tracker
+  labels:
+    app: fitness-tracker-app
+spec:
+  type: LoadBalancer
+  selector:
+    app: fitness-tracker-app
+  ports:
+    - name: http
+      port: 80
+      targetPort: http

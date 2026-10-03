@@ -1,0 +1,81 @@
+# MongoDB as a StatefulSet with a persistent Azure Disk (data survives pod restarts).
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mongodb-service
+  namespace: fitness-tracker
+  labels:
+    app: mongodb
+spec:
+  # Headless service: stable DNS name mongodb-service:27017 for the StatefulSet pod
+  clusterIP: None
+  selector:
+    app: mongodb
+  ports:
+    - name: mongodb
+      port: 27017
+      targetPort: 27017
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: mongodb
+  namespace: fitness-tracker
+  labels:
+    app: mongodb
+spec:
+  serviceName: mongodb-service
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mongodb
+  template:
+    metadata:
+      labels:
+        app: mongodb
+    spec:
+      containers:
+        - name: mongodb
+          image: mongo:7-jammy
+          ports:
+            - name: mongodb
+              containerPort: 27017
+          # MONGO_INITDB_ROOT_USERNAME / MONGO_INITDB_ROOT_PASSWORD from the Secret (enables auth)
+          envFrom:
+            - secretRef:
+                name: mongodb-secret
+          # Startup: allow up to 5 minutes for first-time initialisation
+          startupProbe:
+            exec:
+              command: ["mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+            periodSeconds: 10
+            timeoutSeconds: 10
+            failureThreshold: 30
+          # Liveness: restart MongoDB if it stops answering
+          livenessProbe:
+            exec:
+              command: ["mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+            periodSeconds: 20
+            timeoutSeconds: 10
+            failureThreshold: 3
+          # Readiness: only send traffic when MongoDB answers ping
+          readinessProbe:
+            exec:
+              command: ["mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+            periodSeconds: 10
+            timeoutSeconds: 10
+            failureThreshold: 3
+          volumeMounts:
+            - name: mongodb-data
+              mountPath: /data/db
+  volumeClaimTemplates:
+    - metadata:
+        name: mongodb-data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        # Built-in AKS Azure Disk storage class
+        storageClassName: managed-csi
+        resources:
+          requests:
+            storage: 10Gi
