@@ -8,7 +8,7 @@ metadata:
   labels:
     app: fitness-tracker-app
 spec:
-  type: LoadBalancer
+  type: NodePort
   selector:
     app: fitness-tracker-app
   ports:
